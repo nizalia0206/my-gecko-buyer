@@ -112,7 +112,10 @@ def check_product(intent: IntentRecord, prepared: Prepared) -> FieldResult:
 def check_price(intent: IntentRecord, prepared: Prepared) -> FieldResult:
     """The amount leaving the buyer is at or under the pinned budget."""
     if prepared.price_raw is None:
-        return refuse("price_raw", intent.budget_raw, None, note="the simulation reported no amount")
+        return refuse(
+            "price_raw", intent.budget_raw, None,
+            note="the simulation reported no amount",
+        )
     if prepared.price_raw > intent.budget_raw:
         return refuse("price_raw", intent.budget_raw, prepared.price_raw)
     return agree("price_raw", prepared.price_raw)
