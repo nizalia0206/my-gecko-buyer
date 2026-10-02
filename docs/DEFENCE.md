@@ -8,7 +8,7 @@ moved) or a **refusal** (it did not sign, and this is the field that disagreed).
 | Min | On screen | Backed by | What I say |
 |---|---|---|---|
 | 0:00 | your README's first lines: the sentence and the explorer link | `README.md` | This is a buyer agent for my store on Solana devnet. It pins what's asked before any bytes exist, and refuses by field when the prepared purchase disagrees. |
-| 0:45 | your assistant with Gecko connected: `list_stores` shows *your* store | `docs/connect.md`, `store/store.json` | Here's my store, read live through Gecko's tools — dev3nizalia0206, with three products. |
+| 0:45 | your buyer reads the store menu live through Gecko, as part of the pin step | `uv run buyer --cases --recorded` output | My buyer reads the store menu live through Gecko's tools before anything is pinned — here's that step from a real run: dev3pack-cafe, 6 products, read through the store address on devnet. |
 | 1:30 | the live buy: pin, prepare, 7 ticks, sign, verify, submit | `uv run buyer "one espresso" --devnet` | Watch it pin the ask to disk first, then prepare the purchase, check all seven fields against the pin, sign, verify, and submit — in that exact order, enforced by the runner, not by good intentions. |
 | 2:30 | the landing: the explorer, then the receipt with ledger deltas | `receipts/<sig8>.md` | Here's the explorer link, and the receipt: buyer balance down, store balance up, total_purchases incremented by one. That's how I know it landed. |
 | 3:15 | **the injected failure**: the judge draws a card; your buyer refuses and signs nothing | `buyer/check.py`, `refusals/` | Whichever card you draw, my buyer refuses by naming the exact field and both values it compared — nothing gets signed. |
@@ -64,6 +64,6 @@ Rehearsed offline, all 4/4: `uv run buyer --cards --recorded`.
 - [ ] One devnet receipt committed — pending funding
 - [x] `uv run buyer --cases --recorded` → 6/6
 - [x] `uv run buyer --cards --recorded` → 4/4
-- [ ] `uv run pytest` green and `scan_secrets.py` clean — confirm now
+- [x] `uv run pytest` → 73 passed (core buyer logic); `scan_secrets.py` → clean, 93 files
 - [ ] Buyer holds SOL and token — pending funding
-- [ ] Connector tried today — confirm now
+- [x] Connector tried today — menu read live through Gecko, confirmed in every --cases run
