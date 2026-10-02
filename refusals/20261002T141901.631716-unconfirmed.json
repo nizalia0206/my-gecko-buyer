@@ -1,0 +1,13 @@
+{
+  "ask": "one espresso",
+  "step": "submit",
+  "field": "gecko:unconfirmed",
+  "asked": null,
+  "found": null,
+  "where": "gecko",
+  "note": "",
+  "signed": true,
+  "intent": "intents\\20261002T141855.797181-one-espresso.json",
+  "source": "devnet",
+  "at": "2026-10-02T14:19:01.631716+00:00"
+}
