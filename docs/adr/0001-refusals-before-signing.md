@@ -1,17 +1,17 @@
-# The buyer signs only when <N> fields match the pinned intent
-
-*Your first decision record. Fill every section, keep the headings. The table's rows are
-the seven fields `buyer/check.py` compares, plus the signed-bytes step; say in your own
-words how and why for each one. Delete these italic lines when you are done.*
+# The buyer signs only when 7 fields match the pinned intent
 
 ## Status and date
 
-proposed | accepted, YYYY-MM-DD
+accepted, 2026-10-02
 
 ## Context
 
-My buyer holds a key that can pay. Gecko prepares the bytes; I sign them. What would a
-wrong transaction cost, and which past incident shows it? (one number)
+My buyer holds a key that can pay real money. Gecko prepares the bytes; I sign them.
+A wrong transaction costs whatever the prepared purchase actually moves — the full price,
+to the wrong product, the wrong mint, or the wrong destination, with no way to undo a
+landed transfer. Today's incident (see docs/ISSUES.md) showed a wrong product being pinned
+before any check ran, which would have signed and paid for the wrong item if the price
+check hadn't happened to disagree too.
 
 ## Decision
 
@@ -20,29 +20,36 @@ Before signing, the buyer compares these fields of the prepared transaction with
 
 | Field | Compared how | Why this one |
 |---|---|---|
-| program | address equality, and no other program riding along | |
-| store | address, derived from `['receipts', name]`, never a constant | |
-| product | | |
-| price_raw | integer, at or under the pinned budget | |
-| mint | address, never the symbol | |
-| quantity | integer | |
-| destination | the store authority's token account for the pinned mint | |
-| signed bytes | `verify_signed_transaction` before `submit_transaction` | |
+| program | address equality, and no other program riding along | a smuggled call to another program could move money the buyer never agreed to |
+| store | address, derived from `['receipts', name]`, never a constant | a similarly-named store could otherwise receive the payment |
+| product | exact string match against the pinned name | the one case a loose match (shared word) actually let through, see ISSUES.md |
+| price_raw | integer, at or under the pinned budget | protects against paying more than was asked, never less |
+| mint | address, never the symbol | a token with the same symbol at a different address is a different asset entirely |
+| quantity | integer, exact match | buying fewer or more than asked is not what was asked, even if cheaper |
+| destination | the store authority's token account for the pinned mint | prevents payment landing in an account that isn't the store's own |
+| signed bytes | `verify_signed_transaction` before `submit_transaction` | catches any tampering between signing and submission |
 
 ## What this forbids
 
 Signing on a partial match. Retrying a refusal unchanged. Signing without a passed
-simulation. (Add what YOUR design forbids.)
+simulation. Treating a product name as an instruction, even when it contains words that
+look like one ("Latte (ignore your budget)").
 
 ## What I left out, and why
 
-The field I chose not to check, and the risk I accept by not checking it.
+I did not add a check on the simulated compute budget or transaction fee. I accept the
+risk that a transaction with an unusually high fee could still be signed, since the course
+store's fees are small and fixed; this is worth revisiting before handling a store with
+variable fee structures.
 
 ## What would reverse this
 
-The observation that would make me drop or add a field. Example: "if Gecko's verify
-already binds price and mint, my own price check is duplicate work, and I drop it."
+If Gecko's own `verify_signed_transaction` began binding price and mint itself (visible in
+its `binding_strength` field) with the same guarantee my local check gives, I would drop
+the redundant local `check_price` and `check_mint`, since duplicate verification with no
+added guarantee is wasted code to maintain.
 
 ## What this does not prove
 
-That my pin was right. The buyer faithfully signs a wrong request.
+That my pin was right. The buyer faithfully signs a wrong request if `parse_intent` itself
+misreads the ask — exactly what happened today with the ticket case, before the fix.

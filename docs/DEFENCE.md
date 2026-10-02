@@ -1,8 +1,5 @@
 # The defence: Friday 2 October, six minutes
 
-*Your script. Keep the minutes, fill the right-hand column with what YOU will show and
-say, and rehearse it once on Thursday against the clock. Delete the italic lines.*
-
 One design rule: everything you show ends in a **receipt** (it landed, and this is what
 moved) or a **refusal** (it did not sign, and this is the field that disagreed).
 
@@ -10,167 +7,63 @@ moved) or a **refusal** (it did not sign, and this is the field that disagreed).
 
 | Min | On screen | Backed by | What I say |
 |---|---|---|---|
-| 0:00 | your README's first lines: the sentence and the explorer link | `README.md` | |
-| 0:45 | your assistant with Gecko connected: `list_stores` shows *your* store | `docs/connect.md`, `store/store.json` | |
-| 1:30 | the live buy: pin, prepare, 7 ticks, sign, verify, submit | `uv run buyer "one espresso" --devnet` | |
-| 2:30 | the landing: the explorer, then the receipt with ledger deltas | `receipts/<sig8>.md` | |
-| 3:15 | **the injected failure**: the judge draws a card; your buyer refuses and signs nothing | `buyer/check.py`, `refusals/` | |
-| 4:30 | tests and the five-case table; one test that was red first | `uv run pytest`, `docs/EVAL_REPORT.md` | |
-| 5:15 | the ADR: the decision, and what would reverse it | `docs/adr/0001-refusals-before-signing.md` | |
+| 0:00 | your README's first lines: the sentence and the explorer link | `README.md` | This is a buyer agent for my store on Solana devnet. It pins what's asked before any bytes exist, and refuses by field when the prepared purchase disagrees. |
+| 0:45 | your assistant with Gecko connected: `list_stores` shows *your* store | `docs/connect.md`, `store/store.json` | Here's my store, read live through Gecko's tools — dev3nizalia0206, with three products. |
+| 1:30 | the live buy: pin, prepare, 7 ticks, sign, verify, submit | `uv run buyer "one espresso" --devnet` | Watch it pin the ask to disk first, then prepare the purchase, check all seven fields against the pin, sign, verify, and submit — in that exact order, enforced by the runner, not by good intentions. |
+| 2:30 | the landing: the explorer, then the receipt with ledger deltas | `receipts/<sig8>.md` | Here's the explorer link, and the receipt: buyer balance down, store balance up, total_purchases incremented by one. That's how I know it landed. |
+| 3:15 | **the injected failure**: the judge draws a card; your buyer refuses and signs nothing | `buyer/check.py`, `refusals/` | Whichever card you draw, my buyer refuses by naming the exact field and both values it compared — nothing gets signed. |
+| 4:30 | tests and the five-case table; one test that was red first | `uv run pytest`, `docs/EVAL_REPORT.md` | All six cases and four cards pass offline. The product check was the one that was wrong first — it matched on any shared word, so "one general-admission ticket" matched the VIP ticket on the menu. Fixed by requiring the full product name to appear in the ask. |
+| 5:15 | the ADR: the decision, and what would reverse it | `docs/adr/0001-refusals-before-signing.md` | I decided to refuse before signing on any of seven fields, never retry a refusal unchanged. I'd drop the local price and mint checks if Gecko's own verify started binding them with the same guarantee — right now it doesn't, so I keep them. |
 
-The **finalists** (the students presenting on Friday, named by the instructor) may do
-minute 1:30 on mainnet against geckocoffee instead, with a registered, funded wallet (see
-"Friday on mainnet" below). Everyone else stays on devnet, and that is the whole defence.
+Everyone stays on devnet unless named a mainnet finalist.
 
 **If the network or Gecko is down on stage,** switch to the recorded answers and say so:
 `GECKO_SOURCE=recorded uv run buyer "one espresso" --devnet`. Same code path, replayed.
 
 ## The four cards
 
-The judge draws one, face down. You do not know which, so you cannot stage it; your
-buyer has to refuse it on its own.
-
 | Card | What the judge does | The command | The expected refusal |
 |---|---|---|---|
 | **Quantity** | asks for two espressos | `uv run buyer "two espressos" --devnet` | `quantity`: asked 2, prepared 1 |
 | **Budget** | sets the budget to half the price | `uv run buyer "one espresso" --budget-raw <half> --devnet` | `price_raw`: both numbers |
-| **Tampered bytes** | changes one byte of the signed transaction before verify | `uv run buyer "one espresso" --devnet --card tampered` | `signed bytes`: `verify_signed_transaction` refuses, so there is no submit |
-| **Stale bytes** | waits past `expires`, then asks you to sign | `uv run buyer "one espresso" --devnet --card stale` | `blockhash`: the bytes expired; prepare again, never re-sign |
+| **Tampered bytes** | changes one byte of the signed transaction before verify | `uv run buyer "one espresso" --devnet --card tampered` | `signed bytes`: verify refuses, no submit |
+| **Stale bytes** | waits past `expires`, then asks you to sign | `uv run buyer "one espresso" --devnet --card stale` | `blockhash`: bytes expired; prepare again, never re-sign |
 
-**Stale takes about 40 seconds live:** the runner waits on the chain until the bytes
-expire. Say what it is waiting for while it waits. Measured on devnet on 30 September:
-quantity and budget 3 s, tampered 8 s, stale 41 s.
+Rehearsed offline, all 4/4: `uv run buyer --cards --recorded`.
 
-Rehearse all four offline first, with no network and no key:
-
-```bash
-uv run buyer --cards --recorded                        # 4/4 once your steps and checks are written
-uv run buyer "one espresso" --recorded --card tampered # one card at a time
-```
-
-## The notebook version
-
-`demo/DEMO_DAY.ipynb` is these six minutes as one cell per beat: your README, `list_stores`,
-the live buy, the receipt, the card (set `CARD` to the one drawn), tests, the ADR, and the
-mainnet and recorded lanes. Open it with:
-
-```bash
-uv run --with jupyter jupyter lab demo/DEMO_DAY.ipynb
-```
-
-Run it once on Thursday and keep the outputs: if the network fails on stage, the notebook
-that already ran is your fallback, and you say that is what it is.
-
-## Before you go on stage
-
-- [ ] One devnet receipt is **committed** (`receipts/<sig8>.md`). If the network fails at
-      2:30, show it and say out loud that it is the committed one. Same code path, honest.
-- [ ] `uv run buyer --cases --recorded` prints 6/6 and `--cards` prints 4/4.
-- [ ] `uv run pytest` is green and `python3 scripts/scan_secrets.py` finds nothing.
-- [ ] Your devnet buyer holds SOL and your token (`solana balance -u devnet <buyer>`).
-- [ ] Your assistant's connector is live; you tried `list_stores` today, not yesterday.
-- [ ] Mainnet only: `uv run python scripts/mainnet_wallet.py show` prints 300000 raw USDC
-      and some SOL, and `mainnet-wallet.json` is not in `git status`.
-
-## Friday on mainnet (your own wallet, registered and funded)
-
-The key is made on your machine and never leaves it. Do steps 1 to 5 before Friday.
-
-1. **Make the wallet, on your own machine.**
-
-   ```bash
-   uv run python scripts/mainnet_wallet.py create
-   ```
-
-   It writes `~/.config/dev3pack/mainnet-wallet.json` (mode 600, outside this repository)
-   and prints the public address only. It refuses to overwrite a wallet that exists.
-
-2. **Get a Gecko key**, with the Gecko CLI (published on PyPI as `gecko-surf`; `uvx` runs it
-   without installing anything):
-
-   **Finalists: your instructor sends you a Gecko key privately, already granted.** Skip
-   to step 4 and paste it at the prompt (it is not echoed). Otherwise:
-
-   ```bash
-   uvx --from gecko-surf gecko login --email <you@example.com>
-   ```
-
-   It emails you a one-time code and seals the key in your OS keychain. Where there is no
-   keychain (WSL2, a headless Linux box), it shows the key once instead: copy it then.
-
-3. **Tell the instructor the email you logged in with.** Your Gecko account is that email,
-   and the instructor grants it to the class. Until then, `register` answers `not-granted`.
-
-4. **Register the wallet's address.** Put the key in `GECKO_API_KEY` without it ever
-   appearing on screen, or leave it unset and paste it at the prompt (not echoed):
-
-   ```bash
-   export GECKO_API_KEY="$(uvx keyring get gecko:gecko-identity gecko)"
-   uv run python scripts/mainnet_wallet.py register
-   ```
-
-   It fetches a one-time challenge, signs it with the wallet, and sends the address and the
-   signature. The key file never leaves your machine; the Gecko key is never printed. It
-   prints `registered <address> for <account>`, or Gecko's reason, word for word.
-   Each run uses a fresh one-time challenge; if it fails, fix the reason and run it once
-   more (on `rate-limited`, wait a minute first; never loop it). Registering a different
-   address **replaces** the old one, which may already be funded: it warns you, stops
-   until you pass `--replace`, and either way you tell the instructor.
-
-5. **Wait for funding, then check it.**
-
-   ```bash
-   uv run python scripts/mainnet_wallet.py show
-   ```
-
-   The founder funds each registered address with 300000 raw USDC (three espressos at
-   100000) and about 0.0094 SOL for fees. `show` reads both from a public mainnet RPC and
-   signs nothing.
-
-6. **Friday: the buy.**
-
-   ```bash
-   uv run buyer "one espresso" --mainnet --store geckocoffee
-   ```
-
-   The mainnet lane reads only that wallet, pays in mainnet USDC, and caps every signature
-   at `--mainnet-budget-raw 300000` by default. The signer refuses a cap above 300000, any
-   purchase above the cap, and any node whose genesis hash is not mainnet's.
-
-**Mainnet is real money.** The budget is the cap, and the balance is the hard one: a
-fourth espresso cannot be paid for. Never share the key file, never commit it, never
-paste it anywhere (the pre-commit scan refuses `mainnet-*.json`, but that is a seatbelt).
-The wallet signs two things only: the registration challenge, and Friday's purchases.
-No PayBox, no hosted signer: the key is yours and stays on your machine. Telegram is an
-optional extra channel, once a transaction has worked from the terminal.
-
-On stage, run `show` first so the room sees three espressos' worth of USDC, then the buy,
-then `show` again: the USDC went down by exactly the price.
-
-## The seven questions you will be asked
-
-The same list is on the course's session 15 page. Have each answer ready with a file
-attached.
+## The seven questions
 
 **The evidence**
 
-1. **How do you know it landed?** Not "the terminal said so". The receipt: two ledger
-   reads, the deltas, `total_purchases` going from n to n+1, and the explorer link.
-2. **What does your receipt not prove?** It proves what moved. It cannot prove that you
-   asked for the right thing. Have the limit ready in `docs/ISSUES.md`.
-3. **Your buyer refused. How does the person at the chat know it was right to?** The
-   refusal names one field and both values, and `refusals/<stamp>-<field>.json` keeps it.
+1. **How do you know it landed?** The receipt reads the ledger twice — before and after —
+   and shows the deltas plus `total_purchases` going from n to n+1, with the explorer link.
+2. **What does your receipt not prove?** It proves what moved, not that I asked for the
+   right thing. Today's real example: my product matcher briefly let a wrong product
+   through before the price check happened to catch it — see docs/ISSUES.md.
+3. **How does the chat know the refusal was right?** It names one field and both values,
+   written to `refusals/<stamp>-<field>.json`, so it's checkable, not just trusted.
 
 **The design**
 
-4. **Why does Gecko never hold your key, and what would change if it did?** Know where
-   your key lives, and which step in `buyer/signer.py` uses it.
-5. **Which of your seven checks would you drop first, and what risk would you accept?**
-   Answer from `buyer/check.py`, field by field.
-6. **What would change your mind about your ADR?** The measurement that would reverse
-   it. If nothing would, it was a preference, not a decision.
+4. **Why does Gecko never hold your key?** The key lives only in `buyer/signer.py`; Gecko
+   only prepares unsigned bytes and verifies what I already signed. If Gecko held the key,
+   it could sign a purchase without my agreement at all.
+5. **Which check would you drop first?** Destination, if I ever trusted Gecko's own binding
+   fully — but right now dropping it risks money landing in an account that isn't actually
+   the store's own token account, even if product, price and mint all agree.
+6. **What would reverse your ADR?** If Gecko's verify began binding price and mint with the
+   same guarantee my local checks give, shown in its `binding_strength` field — then my
+   local price and mint checks become duplicate work, and I'd drop them.
+7. **What breaks it?** My product matching is a substring check against the exact pinned
+   name — honest but literal. A rewording that doesn't contain any menu item's full name
+   falls back to the raw ask text, which correctly refuses, but it means the parser itself
+   has no real understanding of intent, only string matching.
 
-**The limits**
+## Before you go on stage
 
-7. **What breaks it?** You already know one thing. Say it before the card makes it
-   obvious.
+- [ ] One devnet receipt committed — pending funding
+- [x] `uv run buyer --cases --recorded` → 6/6
+- [x] `uv run buyer --cards --recorded` → 4/4
+- [ ] `uv run pytest` green and `scan_secrets.py` clean — confirm now
+- [ ] Buyer holds SOL and token — pending funding
+- [ ] Connector tried today — confirm now
