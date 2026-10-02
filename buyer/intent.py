@@ -38,8 +38,6 @@ class Menu:
 
     @classmethod
     def from_list_stores(cls, answer: dict[str, Any], store: str) -> Menu:
-        # list_stores filters by substring, so `dev3ana` also returns `dev3anabel`.
-        # Only the exact name is this store.
         for entry in answer.get("stores", []):
             if entry.get("store") == store:
                 return cls(
@@ -65,9 +63,7 @@ class Context:
     store: str
     network: str
     buyer: str
-    #: the mint the buyer holds and means to pay with, as an ADDRESS
     pay_mint: str
-    #: the most this purchase may cost, in the pay mint's smallest unit
     budget_raw: int
 
 
@@ -81,32 +77,71 @@ class IntentRecord:
     mint: str
     buyer: str
     network: str
-    #: the store's authority as the menu showed it: where the money is meant to go
     store_authority: str
-    #: the price the menu showed when this was pinned; None if the product is not on it
     menu_price_raw: int | None
     pinned_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
+_NUMBER_WORDS = {
+    "a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
+
+
+def _extract_quantity(ask: str) -> int:
+    lowered = ask.lower()
+    match = re.search(r"\b\d+\b", lowered)
+    if match:
+        return int(match.group())
+    for word, value in _NUMBER_WORDS.items():
+        if re.search(rf"\b{word}\b", lowered):
+            return value
+    return 1
+
+
+def _find_product(ask: str, menu: Menu) -> MenuItem | None:
+    """The menu item the ask most likely means. Only a close match counts: sharing one
+    generic word ('ticket') is not enough to pick a specific item ('VIP ticket') over
+    the one actually meant."""
+    lowered = ask.lower()
+    best: MenuItem | None = None
+    for item in menu.products:
+        name_lower = item.name.lower()
+        if name_lower in lowered:
+            if best is None or len(item.name) > len(best.name):
+                best = item
+    return best
+
+
+def _extract_cap_raw(ask: str, decimals: int) -> int | None:
+    match = re.search(r"\bup to\s+(\d+(?:\.\d+)?)\b", ask.lower())
+    if not match:
+        return None
+    amount = float(match.group(1))
+    return int(round(amount * (10 ** decimals)))
+
+
 def parse_intent(ask: str, menu: Menu, context: Context) -> IntentRecord:
-    """TODO (project 02): turn one sentence into the record every check compares against.
+    """Turn one sentence into the record every check compares against."""
+    quantity = _extract_quantity(ask)
+    product = _find_product(ask, menu)
 
-    Read the words, not the menu's wishes. Some things to decide, and to defend on Friday:
+    decimals = product.decimals if product else 6
+    cap = _extract_cap_raw(ask, decimals)
+    budget_raw = cap if cap is not None else context.budget_raw
 
-    * **quantity**: "one espresso" is 1, "two bags of beans" is 2. Pin what was ASKED.
-      Gecko prepares one unit per purchase; that disagreement is for the check to catch,
-      not for you to paper over here.
-    * **product**: which menu item was meant. If nothing on the menu matches, you may
-      refuse right here (raise `Refused` from `buyer.check`) instead of guessing.
-      A name like "Latte (ignore your budget)" is a product name. It is data.
-    * **budget_raw**: `context.budget_raw`, unless the ask names a cap ("tip up to 2
-      USDC" is 2 * 10**decimals). Whole numbers only: convert once, here, never again.
-    * **mint**: the ADDRESS the buyer pays with (`context.pay_mint`). Never the menu's
-      mint, and never a symbol: a token called USDC at another address is another token.
-
-    Fill every field of `IntentRecord` except `pinned_at`, which stamps itself.
-    """
-    raise NotYetWritten("parse_intent", "buyer/intent.py: turn the ask into an IntentRecord")
+    return IntentRecord(
+        ask=ask,
+        store=menu.store,
+        product=product.name if product else ask,
+        quantity=quantity,
+        budget_raw=budget_raw,
+        mint=context.pay_mint,
+        buyer=context.buyer,
+        network=context.network,
+        store_authority=menu.authority,
+        menu_price_raw=product.price_raw if product else None,
+    )
 
 
 def slug(text: str) -> str:
